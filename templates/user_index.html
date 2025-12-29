@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>用户主页 - CampusFinder</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .nav-top {
+            background: #000;
+            padding: 10px 30px;
+            margin-bottom: 30px;
+        }
+
+        .nav-brand {
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #fff;
+            text-transform: uppercase;
+        }
+
+        /* 紧凑发布框 */
+        .publish-card {
+            background: #222;
+            border: none;
+            border-radius: 8px;
+            padding: 20px;
+            color: #fff;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .publish-card h6 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            color: #aaa;
+        }
+
+        /* 物品卡片美化 */
+        .item-card {
+            border: none;
+            border-radius: 6px;
+            transition: 0.3s;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .item-card .card-body {
+            padding: 15px;
+        }
+
+        .badge-cat {
+            font-size: 9px;
+            padding: 4px 8px;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        .item-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #000;
+        }
+
+        .item-info {
+            font-size: 0.75rem;
+            color: #777;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        /* 表单微缩 */
+        .form-control-sm, .form-select-sm {
+            font-size: 0.75rem;
+            border-radius: 4px;
+            padding: 5px 10px;
+        }
+
+        .btn-xs {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 10px;
+            letter-spacing: 1px;
+            border-radius: 3px;
+        }
+
+        /* 表格微缩 */
+        .table-sm {
+            font-size: 11px;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            border-left: 4px solid #000;
+            padding-left: 10px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+<div class="nav-top d-flex justify-content-between align-items-center">
+    <span class="nav-brand">CAMPUS FINDER / 用户</span>
+    <div class="d-flex align-items-center">
+        <span class="text-white-50 me-3 small">欢迎，{{ user.user_name }}</span>
+        <a href="/logout" class="btn btn-xs btn-outline-danger">退出登录</a>
+    </div>
+</div>
+
+<div class="container pb-5" style="max-width: 1100px;">
+    <!-- 发布表单 (要求2) -->
+    <div class="publish-card">
+        <h6>发布新物品</h6>
+        <form action="/publish" method="post" class="row g-2">
+            <div class="col-md-4"><input type="text" name="title"
+                                         class="form-control form-control-sm bg-dark text-white border-secondary"
+                                         placeholder="你捡到/丢了什么？" required></div>
+            <div class="col-md-4"><input type="text" name="location"
+                                         class="form-control form-control-sm bg-dark text-white border-secondary"
+                                         placeholder="地点" required></div>
+            <div class="col-md-2">
+                <select name="cat_id" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    {% for cat in categories %}
+                    <option value="{{ cat.cat_id }}">{{ cat.cat_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-light btn-sm w-100 fw-bold">发布</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 浏览与领回 (要求3) -->
+    <div class="section-title">最新物品</div>
+    <div class="row row-cols-1 row-cols-md-4 g-3 mb-5">
+        {% for i in items %}
+        <div class="col">
+            <div class="card item-card h-100">
+                <div class="card-body">
+                    <span class="badge bg-primary badge-cat">{{ i.cat_name }}</span>
+                    <div class="item-title">{{ i.title }}</div>
+                    <div class="item-info">
+                        地点：{{ i.location }} <br>
+                        时间：{{ i.pub_time }}
+                    </div>
+                    <form action="/claim/{{ i.item_id }}" method="post" class="mt-auto">
+                        <input type="text" name="reason" class="form-control form-control-sm mb-2"
+                               placeholder="为什么是你的？">
+                        <button class="btn btn-xs btn-dark w-100">提交认领</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 领回单与投诉 (要求5) -->
+    <div class="section-title">我的认领请求与投诉</div>
+    <div class="card p-3 border-0">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th>物品</th>
+                <th>申请时间</th>
+                <th>状态</th>
+                <th>投诉</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for c in my_claims %}
+            <tr>
+                <td class="fw-bold">{{ c.title }}</td>
+                <td class="text-muted">{{ c.apply_time }}</td>
+                <td>
+                    {% if c.audit_status == 0 %} <span class="badge bg-warning text-dark">待审核</span>
+                    {% elif c.audit_status == 1 %} <span class="badge bg-success">已通过</span>
+                    {% else %} <span class="badge bg-danger">已拒绝</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-xs btn-outline-danger"
+                            onclick="document.getElementById('c-{{c.claim_id}}').classList.toggle('d-none')">发起投诉
+                    </button>
+                    <div id="c-{{c.claim_id}}" class="d-none mt-2 p-2 border-start border-danger border-3 bg-light">
+                        <form action="/complain/{{c.claim_id}}" method="post">
+                            <div class="d-flex gap-2">
+                                <select name="type" class="form-select form-select-sm" style="width: 120px;">
+                                    <option>冒领投诉</option>
+                                    <option>态度问题</option>
+                                    <option>信息虚假</option>
+                                </select>
+                                <input type="text" name="reason" class="form-control form-control-sm"
+                                       placeholder="详情...">
+                                <button class="btn btn-xs btn-danger">发送</button>
+                            </div>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

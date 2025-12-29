@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>系统登录 - CampusFinder</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css">
+    <style>
+        body {
+            background: #f4f7f6;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            width: 360px;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            background: #fff;
+            padding: 40px 30px;
+        }
+
+        .login-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        .form-control, .form-select {
+            font-size: 0.85rem;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .btn-primary {
+            padding: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            border-radius: 6px;
+        }
+
+        .btn-register {
+            font-size: 0.75rem;
+            color: #aaa;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+
+        .btn-register:hover {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <h3 class="text-center">CampusFinder</h3>
+    <form action="/login" method="post">
+        <div class="mb-3">
+            <label class="form-label">账号</label>
+            <input type="text" name="uid" class="form-control" placeholder="证件号/工号" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">密码</label>
+            <input type="password" name="pwd" class="form-control" placeholder="请输入密码" required>
+        </div>
+        <div class="mb-4">
+            <label class="form-label">角色</label>
+            <select name="role" class="form-select">
+                <option value="user">普通用户</option>
+                <option value="admin">管理员</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">登录</button>
+        <a href="/register" class="btn-register">还没有账号？去注册</a>
+    </form>
+</div>
+</body>
+</html>

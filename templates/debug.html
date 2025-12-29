@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>数据库监控 - CampusFinder</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css">
+    <style>
+        body {
+            background: #f0f2f5;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: #333;
+        }
+
+        .navbar {
+            padding: 4px 20px;
+            min-height: 40px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .navbar-brand {
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+        }
+
+        .container-fluid {
+            padding: 20px 40px;
+        }
+
+        .table-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        }
+
+        .table-header {
+            background: #fafafa;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #000;
+            letter-spacing: 1px;
+        }
+
+        .table-responsive {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            font-size: 10px;
+            color: #888;
+            border-bottom: 2px solid #333;
+            padding: 6px 10px;
+        }
+
+        .table tbody td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #f5f5f5;
+            vertical-align: middle;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #fff9e6;
+        }
+
+        /* 悬停高亮 */
+        .empty-text {
+            padding: 20px;
+            color: #ccc;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-black">
+    <div class="container-fluid">
+        <span class="navbar-brand">数据库实时监控</span>
+        <a href="/" class="btn btn-xs btn-outline-info" style="font-size: 10px; padding: 2px 8px;">返回</a>
+    </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        {% for table_name, data in db_data.items() %}
+        <div class="col-xl-4 col-lg-6"> <!-- 三列布局，更省空间 -->
+            <div class="table-card">
+                <div class="table-header">{{ table_name }}</div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                        <tr>
+                            {% for col in data.columns %}
+                            <th>{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% if data.rows %}
+                        {% for row in data.rows %}
+                        <tr>
+                            {% for col in data.columns %}
+                            <td>{{ row[col] }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ data.columns|length }}" class="empty-text">暂无数据</td>
+                        </tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</body>
+</html>

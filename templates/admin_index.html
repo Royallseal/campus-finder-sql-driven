@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>管理员控制台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/lux/bootstrap.min.css">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-size: 12px;
+        }
+
+        .nav-top {
+            background: #000;
+            padding: 10px 30px;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-left: 4px solid #000;
+            padding-left: 10px;
+            margin: 30px 0 15px 0;
+        }
+
+        .card {
+            border: none;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 压缩表格和表单大小 */
+        .table-sm {
+            font-size: 11px;
+        }
+
+        .form-control-sm {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 2px;
+        }
+
+        .btn-xs {
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 2px;
+        }
+
+        .alert-task {
+            border-left: 3px solid #ffc107;
+            background: #fff;
+            color: #333;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="nav-top d-flex justify-content-between align-items-center">
+    <span class="text-white fw-bold">管理员控制台</span>
+    <div>
+        <a href="/debug" class="btn btn-xs btn-outline-info me-2">调试监控</a>
+        <a href="/logout" class="btn btn-xs btn-outline-danger">退出登录</a>
+    </div>
+</div>
+
+<div class="container pb-5">
+    <!-- 用户管理 (CRUD) -->
+    <div class="section-title">用户管理 (增删改查)</div>
+    <div class="card p-3">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th>用户ID</th>
+                <th>姓名</th>
+                <th>电话</th>
+                <th>院系</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for u in users %}
+            <tr>
+                <form action="/admin/update_user" method="post">
+                    <td><input type="hidden" name="uid" value="{{u.user_id}}">{{u.user_id}}</td>
+                    <td><input type="text" name="name" value="{{u.user_name}}"
+                               class="form-control-sm border-0 bg-light"></td>
+                    <td><input type="text" name="phone" value="{{u.phone}}" class="form-control-sm border-0 bg-light">
+                    </td>
+                    <td>{{ u.department }}</td>
+                    <td>
+                        <button class="btn btn-xs btn-dark">更新</button>
+                    </td>
+                </form>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row mt-4">
+        <!-- 认领审核 (触发器演示) -->
+        <div class="col-md-6">
+            <div class="section-title">待审核认领 (触发器演示)</div>
+            {% for c in claims if c.audit_status == 0 %}
+            <div class="card p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong class="text-primary">{{ c.user_name }}</strong> 申请认领 <strong>{{ c.title }}</strong>
+                        <p class="mb-0 text-muted small">原因: {{ c.reason }}</p>
+                    </div>
+                    <div class="d-flex flex-column gap-1">
+                        <a href="/admin/audit/{{c.claim_id}}/1" class="btn btn-xs btn-success">通过</a>
+                        <a href="/admin/audit/{{c.claim_id}}/2" class="btn btn-xs btn-outline-danger">拒绝</a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted small">暂无待审核认领。</p>
+            {% endfor %}
+        </div>
+
+        <!-- 投诉处理 -->
+        <div class="col-md-6">
+            <div class="section-title">最近投诉</div>
+            {% for cp in complaints %}
+            <div class="card p-3 mb-2 bg-white border-warning">
+                <span class="badge bg-warning text-dark mb-2" style="width: fit-content;">{{ cp.type }}</span>
+                <p class="small mb-2">{{ cp.reason }}</p>
+                <form action="/admin/handle_comp/{{cp.comp_id}}" method="post" class="d-flex gap-2">
+                    <input type="text" name="result" class="form-control form-control-sm"
+                           placeholder="处理结果...">
+                    <button class="btn btn-xs btn-dark">提交</button>
+                </form>
+            </div>
+            {% else %}
+            <p class="text-muted small">暂无投诉。</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 黑名单 (触发器展示) -->
+    <div class="section-title">信用黑名单 (触发器触发)</div>
+    <div class="card p-3">
+        <table class="table table-sm text-center">
+            <thead class="table-danger">
+            <tr>
+                <th>用户ID</th>
+                <th>违规类型</th>
+                <th>冻结至</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for b in blacklist %}
+            <tr>
+                <td>{{b.user_id}}</td>
+                <td>{{b.violation_type}}</td>
+                <td>{{b.freeze_until}}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
