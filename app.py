@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+CampusFinder 校园失物招领寻物平台 - 后端核心逻辑
+功能涵盖：用户/管理员认证、物品发布与搜索、认领审核流转、投诉处理、信用体系维护及站内通知系统。
+"""
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import pymysql
 from config import DB_CONFIG
@@ -7,17 +11,20 @@ app = Flask(__name__)
 app.secret_key = 'campus_finder_final_secret'
 
 def get_db_connection():
+    """建立数据库连接，使用 DictCursor 以便通过键名访问数据"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
-# --- 1. 认证模块 ---
+# --- 1. 认证模块 (登录、注册、注销) ---
 @app.route('/')
 def index():
+    """入口页面：根据 Session 状态自动跳转或显示登录页"""
     if 'user' in session: return redirect(url_for('user_dashboard'))
     if 'admin' in session: return redirect(url_for('admin_dashboard'))
     return render_template('login.html')
 
 @app.route('/login', methods=['POST'])
 def login():
+    """统一登录接口：支持普通用户与管理员角色切换"""
     uid, pwd, role = request.form['uid'], request.form['pwd'], request.form['role']
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -34,6 +41,7 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """用户注册：默认密码 123456"""
     if request.method == 'POST':
         conn = get_db_connection()
         with conn.cursor() as cursor:
@@ -45,22 +53,23 @@ def register():
 
 @app.route('/logout')
 def logout():
+    """注销登录：清空所有 Session 状态"""
     session.clear()
     return redirect(url_for('index'))
 
-# --- 2. 用户端 (要求2,3,5) ---
+# --- 2. 用户端模块 (核心业务逻辑) ---
 @app.route('/user_dashboard')
 def user_dashboard():
+    """用户主页：包含物品浏览、搜索、消息通知及个人认领状态"""
     if 'user' not in session: return redirect(url_for('index'))
     search_query = request.args.get('q', '')
     conn = get_db_connection()
     with conn.cursor() as cursor:
-        # 检查当前用户是否被冻结
+        # 检查当前用户是否被冻结 (信用体系集成)
         cursor.execute("SELECT * FROM CreditRecord WHERE user_id=%s AND freeze_until > NOW()", (session['user']['user_id'],))
         is_frozen = cursor.fetchone() is not None
 
-        # 分类获取：0-招领(别人捡到的), 1-寻物(别人丢的)
-        # 使用索引 idx_item_title 进行搜索优化
+        # 分类获取物品：利用视图 v_recent_items 并配合索引 idx_item_title 进行搜索优化
         if search_query:
             cursor.execute("SELECT * FROM v_recent_items WHERE type=0 AND title LIKE %s ORDER BY pub_time DESC", (f'%{search_query}%',))
             found_items = cursor.fetchall()
@@ -72,10 +81,9 @@ def user_dashboard():
             cursor.execute("SELECT * FROM v_recent_items WHERE type=1 ORDER BY pub_time DESC")
             lost_items = cursor.fetchall()
         
-        # 我发起的认领（领别人的）
+        # 获取认领记录：包含“我发起的”和“别人领我的”
         cursor.execute("SELECT c.*, i.title FROM Claim c JOIN Item i ON c.item_id=i.item_id WHERE c.user_id=%s", (session['user']['user_id']))
         my_claims = cursor.fetchall()
-        # 别人认领我的（我发布的物品被别人认领）
         cursor.execute("""
             SELECT c.*, i.title, u.user_name as claimer_name 
             FROM Claim c 
@@ -88,10 +96,9 @@ def user_dashboard():
         cursor.execute("SELECT * FROM Category")
         categories = cursor.fetchall()
 
-        # 获取未读消息 (要求：站内通知)
+        # 获取站内消息：进入页面即自动标记为已读
         cursor.execute("SELECT * FROM Message WHERE user_id=%s ORDER BY send_time DESC", (session['user']['user_id'],))
         messages = cursor.fetchall()
-        # 标记为已读
         cursor.execute("UPDATE Message SET is_read=TRUE WHERE user_id=%s", (session['user']['user_id'],))
         conn.commit()
 
@@ -103,6 +110,7 @@ def user_dashboard():
 
 @app.route('/publish', methods=['POST'])
 def publish_item():
+    """发布物品：包含后端冻结状态二次校验"""
     if 'user' not in session: return redirect(url_for('index'))
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -118,6 +126,7 @@ def publish_item():
 
 @app.route('/claim/<int:item_id>', methods=['POST'])
 def claim_item(item_id):
+    """发起认领：调用存储过程 sp_submit_claim 并发送系统通知"""
     if 'user' not in session: return redirect(url_for('index'))
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -136,6 +145,7 @@ def claim_item(item_id):
 
 @app.route('/complain/<int:claim_id>', methods=['POST'])
 def complain(claim_id):
+    """提交投诉：关联具体的认领记录"""
     conn = get_db_connection()
     with conn.cursor() as cursor:
         cursor.execute("INSERT INTO Complaint (reason, type, claim_id) VALUES (%s, %s, %s)",
@@ -143,16 +153,17 @@ def complain(claim_id):
         conn.commit()
     return redirect(url_for('user_dashboard'))
 
-# --- 3. 管理端 (要求1,4,6,7) ---
+# --- 3. 管理端模块 (管理与审计) ---
 @app.route('/admin_dashboard')
 def admin_dashboard():
+    """管理员后台：包含用户 CRUD、认领审核、投诉处理及黑名单维护"""
     if 'admin' not in session: return redirect(url_for('index'))
     conn = get_db_connection()
     with conn.cursor() as cursor:
-        # 自动清理过期黑名单 (调用存储过程)
+        # 自动维护：调用存储过程清理过期黑名单
         cursor.callproc('sp_clear_expired_blacklist')
         
-        # 获取用户列表并标注是否冻结，同时关联视图 v_user_violations 获取违规统计
+        # 获取用户列表：关联视图 v_user_violations 展示信用画像
         cursor.execute("""
             SELECT u.*, v.rejected_claims, v.complaint_count,
             (SELECT COUNT(*) FROM CreditRecord WHERE user_id=u.user_id AND freeze_until > NOW()) as is_frozen
@@ -170,6 +181,7 @@ def admin_dashboard():
 
 @app.route('/admin/update_user', methods=['POST'])
 def update_user():
+    """更新用户信息 (CRUD - Update)"""
     conn = get_db_connection()
     with conn.cursor() as cursor:
         cursor.execute("UPDATE User SET user_name=%s, phone=%s WHERE user_id=%s",
@@ -179,6 +191,7 @@ def update_user():
 
 @app.route('/admin/delete_user/<uid>')
 def delete_user(uid):
+    """删除用户 (CRUD - Delete)：由于设置了级联删除，相关物品和消息将同步清理"""
     if 'admin' not in session: return redirect(url_for('index'))
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -188,6 +201,7 @@ def delete_user(uid):
 
 @app.route('/admin/audit/<int:claim_id>/<int:status>')
 def audit(claim_id, status):
+    """认领审核：更新状态后将触发数据库触发器 trg_audit_claim 自动处理后续逻辑"""
     if 'admin' not in session: return redirect(url_for('index'))
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -206,6 +220,7 @@ def audit(claim_id, status):
 
 @app.route('/admin/handle_comp/<int:comp_id>', methods=['POST'])
 def handle_comp(comp_id):
+    """投诉处理：支持“确认违规”并自动冻结用户 15 天"""
     if 'admin' not in session: return redirect(url_for('index'))
     action = request.form.get('action')
     result = request.form.get('result')
@@ -239,6 +254,7 @@ def handle_comp(comp_id):
 
 @app.route('/admin/freeze/<uid>')
 def freeze_user(uid):
+    """手动冻结：管理员强制冻结用户 7 天"""
     conn = get_db_connection()
     with conn.cursor() as cursor:
         # 手动冻结 7 天 (要求7)
@@ -249,6 +265,7 @@ def freeze_user(uid):
 
 @app.route('/admin/unfreeze/<uid>')
 def unfreeze_user(uid):
+    """手动解冻：将用户所有未到期的冻结记录设为立即过期"""
     if 'admin' not in session: return redirect(url_for('index'))
     conn = get_db_connection()
     with conn.cursor() as cursor:
@@ -258,9 +275,10 @@ def unfreeze_user(uid):
     return redirect(url_for('admin_dashboard'))
 
 
-# --- 调试模式：上帝视角 - 实时查看所有表数据 ---
+# --- 4. 调试模块：上帝视角 ---
 @app.route('/debug')
 def debug_view():
+    """调试页面：实时监控数据库中所有表（含视图）的原始数据"""
     conn = get_db_connection()
     all_tables_data = {}
     try:
