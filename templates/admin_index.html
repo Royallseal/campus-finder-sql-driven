@@ -62,7 +62,7 @@
 <body>
 
 <div class="nav-top d-flex justify-content-between align-items-center">
-    <span class="text-white fw-bold">管理员控制台</span>
+    <span class="text-white fw-bold">管理员控制台 <small class="text-white-50 ms-2">(权限等级: {{ session.admin.admin_level }})</small></span>
     <div>
         <a href="/debug" class="btn btn-xs btn-outline-info me-2">调试监控</a>
         <a href="/logout" class="btn btn-xs btn-outline-danger">退出登录</a>
@@ -79,7 +79,8 @@
                 <th>用户ID</th>
                 <th>姓名</th>
                 <th>电话</th>
-                <th>院系</th>
+                <th>违规统计</th>
+                <th>状态</th>
                 <th>操作</th>
             </tr>
             </thead>
@@ -92,9 +93,27 @@
                                class="form-control-sm border-0 bg-light"></td>
                     <td><input type="text" name="phone" value="{{u.phone}}" class="form-control-sm border-0 bg-light">
                     </td>
-                    <td>{{ u.department }}</td>
                     <td>
-                        <button class="btn btn-xs btn-dark">更新</button>
+                        <span class="text-danger" title="被拒认领">✘ {{ u.rejected_claims }}</span>
+                        <span class="text-warning ms-2" title="被投诉次数">⚠ {{ u.complaint_count }}</span>
+                    </td>
+                    <td>
+                        {% if u.is_frozen %}
+                        <span class="badge bg-danger">已冻结</span>
+                        {% else %}
+                        <span class="badge bg-success">正常</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-xs btn-dark">更新</button>
+                            {% if u.is_frozen %}
+                            <a href="/admin/unfreeze/{{u.user_id}}" class="btn btn-xs btn-success">解冻</a>
+                            {% else %}
+                            <a href="/admin/freeze/{{u.user_id}}" class="btn btn-xs btn-outline-warning">冻结</a>
+                            {% endif %}
+                            <a href="/admin/delete_user/{{u.user_id}}" class="btn btn-xs btn-outline-danger" onclick="return confirm('确定删除该用户吗？')">删除</a>
+                        </div>
                     </td>
                 </form>
             </tr>
@@ -132,10 +151,13 @@
             <div class="card p-3 mb-2 bg-white border-warning">
                 <span class="badge bg-warning text-dark mb-2" style="width: fit-content;">{{ cp.type }}</span>
                 <p class="small mb-2">{{ cp.reason }}</p>
-                <form action="/admin/handle_comp/{{cp.comp_id}}" method="post" class="d-flex gap-2">
+                <form action="/admin/handle_comp/{{cp.comp_id}}" method="post" class="d-flex flex-column gap-2">
                     <input type="text" name="result" class="form-control form-control-sm"
-                           placeholder="处理结果...">
-                    <button class="btn btn-xs btn-dark">提交</button>
+                           placeholder="处理意见..." required>
+                    <div class="d-flex gap-2">
+                        <button name="action" value="violation" class="btn btn-xs btn-danger flex-grow-1">确认违规 (冻结)</button>
+                        <button name="action" value="normal" class="btn btn-xs btn-outline-secondary flex-grow-1">不违规</button>
+                    </div>
                 </form>
             </div>
             {% else %}
