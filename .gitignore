@@ -4,3 +4,6 @@
 
 ./config.py
 config.py
+
+.repomixignore
+repomix-output.xml
