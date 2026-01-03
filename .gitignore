@@ -1,9 +1,13 @@
 .venv/
 .idea/
 .vs/
+__pycache__/
+*.pyc
+
 
 ./config.py
 config.py
 
 .repomixignore
 repomix-output.xml
+
